@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAYZCHAT</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial;background:#0f0f0f;color:#fff}
+.container{max-width:500px;margin:auto;padding:10px}
+h2{text-align:center}
+input,button{width:100%;padding:10px;margin:6px 0;background:#222;color:#fff;border:1px solid #444;border-radius:6px}
+button{cursor:pointer}
+#chat{height:60vh;overflow:auto;border:1px solid #333;padding:10px;border-radius:6px;background:#111}
+.msg{margin-bottom:6px}
+.system{color:#888;font-style:italic;font-size:13px;text-align:center}
+#online{text-align:center;color:#0f0;font-size:12px;margin-bottom:5px}
+.footer{display:flex;gap:5px}
+.footer input{flex:1}
+.footer button{width:80px}
+.hidden{display:none}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h2>🔥 PAYZCHAT 🔥</h2>
+
+<!-- LOGIN -->
+<div id="loginBox">
+  <input id="name" placeholder="Nama">
+  <input id="room" placeholder="Kode Room">
+  <button onclick="join()">MASUK</button>
+</div>
+
+<!-- ROOM -->
+<div id="roomBox" class="hidden">
+  <div id="online"></div>
+  <div id="chat"></div>
+  <div class="footer">
+    <input id="msg" placeholder="Ketik pesan...">
+    <button onclick="send()">KIRIM</button>
+  </div>
+</div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBvIQA6sXOdJb0RBkLXeeWD6JxKDVahJjs",
+  authDomain: "payzchat.firebaseapp.com",
+  databaseURL: "https://payzchat-default-rtdb.firebaseio.com",
+  projectId: "payzchat"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+let roomCode="", userName="";
+
+function join(){
+  userName = document.getElementById("name").value.trim();
+  roomCode = document.getElementById("room").value.trim();
+  if(!userName || !roomCode) return alert("ISI NAMA & KODE!");
+
+  document.getElementById("loginBox").classList.add("hidden");
+  document.getElementById("roomBox").classList.remove("hidden");
+
+  db.ref("rooms/"+roomCode+"/chat").push({system:true,msg:userName+" bergabung"});
+  const userRef=db.ref("rooms/"+roomCode+"/online/"+userName);
+  userRef.set(true); userRef.onDisconnect().remove();
+
+  db.ref("rooms/"+roomCode+"/online").on("value",s=>{
+    document.getElementById("online").innerText =
+      "ONLINE: " + Object.keys(s.val()||{}).length;
+  });
+
+  db.ref("rooms/"+roomCode+"/chat").on("child_added",s=>{
+    const d=s.val();
+    const chat=document.getElementById("chat");
+    if(d.system) chat.innerHTML+=`<div class="system">${d.msg}</div>`;
+    else chat.innerHTML+=`<div class="msg"><b>${d.name}</b>: ${d.msg}</div>`;
+    chat.scrollTop=chat.scrollHeight;
+  });
+}
+
+function send(){
+  const text=document.getElementById("msg").value.trim();
+  if(!text) return;
+  db.ref("rooms/"+roomCode+"/chat").push({name:userName,msg:text});
+  document.getElementById("msg").value="";
+}
+
+window.onbeforeunload=()=>{
+  if(roomCode){
+    db.ref("rooms/"+roomCode+"/chat").push({system:true,msg:userName+" keluar"});
+  }
+}
+</script>
+</body>
+</html>
